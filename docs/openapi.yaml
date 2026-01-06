@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: HeadlessForms API
+  description: |
+    A self-hosted, single-binary form backend for developers.
+    Accept form submissions from any website with email notifications, webhooks, and access control.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  contact:
+    name: HeadlessForms
+    url: https://github.com/yourorg/headlessforms
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Forms
+    description: Form management
+  - name: Submissions
+    description: Form submissions
+  - name: Stats
+    description: Dashboard statistics
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+
+  /forms:
+    get:
+      tags: [Forms]
+      summary: List forms
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of forms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormsListResponse"
+
+    post:
+      tags: [Forms]
+      summary: Create form
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFormRequest"
+      responses:
+        "201":
+          description: Form created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormResponse"
+
+  /forms/{form_id}:
+    get:
+      tags: [Forms]
+      summary: Get form by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FormId"
+      responses:
+        "200":
+          description: Form details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Forms]
+      summary: Update form
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FormId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFormRequest"
+      responses:
+        "200":
+          description: Form updated
+
+    delete:
+      tags: [Forms]
+      summary: Delete form
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FormId"
+      responses:
+        "200":
+          description: Form deleted
+
+  /forms/{form_id}/submissions:
+    get:
+      tags: [Submissions]
+      summary: List submissions for a form
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/FormId"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionsListResponse"
+
+  /submissions/{form_id}:
+    post:
+      tags: [Submissions]
+      summary: Submit form data (public endpoint)
+      description: |
+        Submit data to a form. Access depends on form's access_mode:
+        - **public**: Anyone can submit
+        - **with_key**: Requires `_key` field matching submission_key
+        - **private**: Requires authentication
+      parameters:
+        - $ref: "#/components/parameters/FormId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Submission received
+        "403":
+          description: Access denied (invalid key or auth required)
+
+  /stats:
+    get:
+      tags: [Stats]
+      summary: Get dashboard statistics
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    FormId:
+      name: form_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Form public ID
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [fail, error]
+        message:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+            user:
+              $ref: "#/components/schemas/User"
+
+    UserResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [user, admin, super_admin]
+
+    CreateFormRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        redirect_url:
+          type: string
+          format: uri
+        notify_emails:
+          type: array
+          items:
+            type: string
+            format: email
+        webhook_url:
+          type: string
+          format: uri
+        webhook_secret:
+          type: string
+        access_mode:
+          type: string
+          enum: [public, with_key, private]
+          default: public
+        submission_key:
+          type: string
+
+    UpdateFormRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateFormRequest"
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [active, inactive]
+
+    Form:
+      type: object
+      properties:
+        id:
+          type: string
+        public_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+        access_mode:
+          type: string
+        submission_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    FormResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          $ref: "#/components/schemas/Form"
+
+    FormsListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            forms:
+              type: array
+              items:
+                $ref: "#/components/schemas/Form"
+            pagination:
+              $ref: "#/components/schemas/Pagination"
+
+    Submission:
+      type: object
+      properties:
+        id:
+          type: string
+        form_id:
+          type: string
+        status:
+          type: string
+          enum: [unread, read]
+        data:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+
+    SubmissionsListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            submissions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Submission"
+            pagination:
+              $ref: "#/components/schemas/Pagination"
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+    StatsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            total_forms:
+              type: integer
+            total_submissions:
+              type: integer
+            unread_submissions:
+              type: integer
+            submissions_today:
+              type: integer
+            submissions_this_week:
+              type: integer

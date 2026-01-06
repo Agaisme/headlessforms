@@ -1,0 +1,48 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+server
+
+# Test
+*.test
+*.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+.svelte-kit/
+web/build/
+web/.svelte-kit/
+
+# Build artifacts
+dist/
+bin/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/

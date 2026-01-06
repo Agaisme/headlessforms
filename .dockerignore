@@ -1,0 +1,9 @@
+web/node_modules
+web/build
+.svelte-kit
+bin
+server.exe
+data
+data.db
+.git
+.env
