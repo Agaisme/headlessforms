@@ -308,7 +308,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between">
     <div>
-      <Button variant="ghost" size="sm" href="/" class="gap-2 mb-2">
+      <Button variant="ghost" size="sm" href="/forms" class="gap-2 mb-2">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="h-4 w-4"
