@@ -107,7 +107,9 @@ func (h *Router) HandleSubmit(w http.ResponseWriter, r *http.Request) {
 
 	// For private forms: inject auth user ID from context
 	if userID := r.Context().Value("user_id"); userID != nil {
-		meta["_auth_user_id"] = userID.(string)
+		if uid, ok := userID.(string); ok {
+			meta["_auth_user_id"] = uid
+		}
 	}
 
 	// 5. Submit

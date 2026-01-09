@@ -280,7 +280,10 @@ func TestHandleHealthCheck(t *testing.T) {
 
 	var resp map[string]interface{}
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-	data := resp["data"].(map[string]interface{})
+	data, ok := resp["data"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected data object in response")
+	}
 	if data["status"] != "healthy" {
 		t.Errorf("expected health status 'healthy'")
 	}

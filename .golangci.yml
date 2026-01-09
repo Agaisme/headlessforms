@@ -1,5 +1,5 @@
 # golangci-lint v2 configuration
-# https://golangci-lint.run/usage/configuration/
+# https://golangci-lint.run/docs/configuration/
 version: "2"
 
 run:
@@ -15,20 +15,13 @@ linters:
     - bodyclose
     - gosec
     - misspell
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
+  settings:
+    errcheck:
+      check-type-assertions: true
 
 issues:
-  exclude-rules:
-    # Ignore specific linters in test files
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
-        - bodyclose
-    # Ignore G101 false positive - "password_resets" is a table name, not credentials
-    - linters:
-        - gosec
-      text: "G101"
+  exclude-generated: lax
+  exclude-dirs:
+    - vendor
+  exclude-files:
+    - ".*_test\\.go$"
