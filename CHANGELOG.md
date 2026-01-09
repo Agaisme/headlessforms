@@ -5,7 +5,35 @@ All notable changes to HeadlessForms will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-01-07
+## [1.2.0] - 2026-01-10
+
+### Added
+
+- 🧪 **Integration Tests** - 13 end-to-end HTTP tests covering forms, submissions, stats
+- 📚 **OpenAPI Documentation** - Complete API specification with Swagger UI (`/api/docs`)
+- 📝 **Structured Logging** - New `logger` package using Go's `slog`
+- ✅ **Validation Package** - Fluent API for request validation
+- 🔧 **Functional Options** - Options pattern for form creation
+
+### Changed
+
+- **Handler Refactoring** - Split 787-line `handler.go` into 6 focused files
+- **Consistent Naming** - Standardized handler files (`handler_*.go`)
+- **CI/CD Simplified** - Removed Docker job, kept Backend/Frontend/Release
+- **golangci-lint v2** - Updated to latest stable linter
+
+### Fixed
+
+- Fixed type assertions in handlers (errcheck warnings)
+- Fixed nolint directive placement for G101 false positive
+- Fixed gitignore pattern for cmd/server directory
+
+### Security
+
+- Added rate limiting middleware
+- Enhanced error handling with `errors.Is()`
+
+## [1.1.0] - 2026-01-08
 
 ### Added
 
