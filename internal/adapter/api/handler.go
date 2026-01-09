@@ -91,10 +91,29 @@ func (h *Router) RegisterProtectedRoutes(mux *http.ServeMux, authMiddleware func
 // =============================================================================
 
 // HandleHealthCheck: GET /api/health
+// Returns health status with database connectivity check
 func (h *Router) HandleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	response.Success(w, map[string]string{
-		"status":  "healthy",
-		"version": "1.0.0",
+	status := "healthy"
+	checks := make(map[string]interface{})
+
+	// Check database connection by fetching dashboard stats
+	_, err := h.statsService.GetDashboardStats(r.Context())
+	if err != nil {
+		checks["database"] = map[string]interface{}{
+			"status": "unhealthy",
+			"error":  err.Error(),
+		}
+		status = "degraded"
+	} else {
+		checks["database"] = map[string]interface{}{
+			"status": "healthy",
+		}
+	}
+
+	response.Success(w, map[string]interface{}{
+		"status":  status,
+		"version": "1.2.0",
+		"checks":  checks,
 	})
 }
 
