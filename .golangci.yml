@@ -1,5 +1,4 @@
 # golangci-lint v2 configuration
-# https://golangci-lint.run/docs/configuration/
 version: "2"
 
 run:
@@ -18,10 +17,3 @@ linters:
   settings:
     errcheck:
       check-type-assertions: true
-
-issues:
-  exclude-generated: lax
-  exclude-dirs:
-    - vendor
-  exclude-files:
-    - ".*_test\\.go$"
