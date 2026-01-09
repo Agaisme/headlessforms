@@ -24,6 +24,31 @@ func NewAuthHandler(authService *service.AuthService, emailService *email.Servic
 	return &AuthHandler{authService: authService, emailService: emailService, baseURL: baseURL}
 }
 
+// RegisterPublicRoutes registers public auth routes (no auth required)
+func (h *AuthHandler) RegisterPublicRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/v1/auth/register", h.HandleRegister)
+	mux.HandleFunc("POST /api/v1/auth/login", h.HandleLogin)
+	mux.HandleFunc("GET /api/v1/auth/setup", h.HandleSetupRequired)
+	mux.HandleFunc("POST /api/v1/auth/forgot-password", h.HandleForgotPassword)
+	mux.HandleFunc("POST /api/v1/auth/reset-password", h.HandleResetPassword)
+}
+
+// RegisterProtectedRoutes registers protected auth routes (auth required)
+func (h *AuthHandler) RegisterProtectedRoutes(mux *http.ServeMux, authMiddleware func(http.Handler) http.Handler) {
+	// Current user
+	mux.Handle("GET /api/v1/auth/me", authMiddleware(http.HandlerFunc(h.HandleMe)))
+
+	// Self-service profile management
+	mux.Handle("PUT /api/v1/auth/profile", authMiddleware(http.HandlerFunc(h.HandleUpdateProfile)))
+	mux.Handle("PUT /api/v1/auth/password", authMiddleware(http.HandlerFunc(h.HandleUpdatePassword)))
+
+	// Admin user management
+	mux.Handle("GET /api/v1/users", authMiddleware(http.HandlerFunc(h.HandleListUsers)))
+	mux.Handle("POST /api/v1/users", authMiddleware(http.HandlerFunc(h.HandleCreateUser)))
+	mux.Handle("PUT /api/v1/users/{user_id}", authMiddleware(http.HandlerFunc(h.HandleUpdateUser)))
+	mux.Handle("DELETE /api/v1/users/{user_id}", authMiddleware(http.HandlerFunc(h.HandleDeleteUser)))
+}
+
 // RegisterRequest represents the registration request body
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -245,6 +270,131 @@ func (h *AuthHandler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, map[string]string{"message": "User deleted successfully"})
 }
 
+// HandleUpdateProfile updates the current user's profile (self-service)
+func (h *AuthHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "Not authenticated", "UNAUTHORIZED")
+		return
+	}
+
+	var req struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "Invalid request body", "INVALID_BODY")
+		return
+	}
+
+	user, err := h.authService.UpdateUser(r.Context(), userID, req.Name, req.Email, nil)
+	if err != nil {
+		switch err {
+		case domain.ErrUserNotFound:
+			response.NotFound(w, "User not found")
+		case domain.ErrUserExists:
+			response.Error(w, http.StatusConflict, "Email already in use", "EMAIL_EXISTS")
+		default:
+			response.HandleError(w, err)
+		}
+		return
+	}
+
+	response.Success(w, user.ToPublic())
+}
+
+// HandleUpdatePassword changes the current user's password
+func (h *AuthHandler) HandleUpdatePassword(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "Not authenticated", "UNAUTHORIZED")
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "Invalid request body", "INVALID_BODY")
+		return
+	}
+
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		response.BadRequest(w, "Current and new password are required", "MISSING_FIELDS")
+		return
+	}
+
+	if err := h.authService.UpdatePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword); err != nil {
+		switch err {
+		case domain.ErrInvalidCredentials:
+			response.Error(w, http.StatusUnauthorized, "Current password is incorrect", "INVALID_PASSWORD")
+		case domain.ErrPasswordTooShort:
+			response.BadRequest(w, "Password must be at least 8 characters", "PASSWORD_TOO_SHORT")
+		default:
+			response.HandleError(w, err)
+		}
+		return
+	}
+
+	response.Success(w, map[string]string{"message": "Password updated successfully"})
+}
+
+// HandleUpdateUser updates a user's profile (admin only, can update role)
+func (h *AuthHandler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
+	// Check if current user is admin or super_admin
+	if !middleware.IsAdmin(r.Context()) {
+		response.Error(w, http.StatusForbidden, "Admin access required", "FORBIDDEN")
+		return
+	}
+
+	userID := r.PathValue("user_id")
+	if userID == "" {
+		response.BadRequest(w, "User ID required", "MISSING_USER_ID")
+		return
+	}
+
+	var req struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Role  string `json:"role"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.BadRequest(w, "Invalid request body", "INVALID_BODY")
+		return
+	}
+
+	// Parse role if provided
+	var role *domain.UserRole
+	if req.Role != "" {
+		r := domain.UserRole(req.Role)
+		// Validate role
+		if r != domain.RoleSuperAdmin && r != domain.RoleAdmin && r != domain.RoleUser {
+			response.BadRequest(w, "Invalid role. Must be 'super_admin', 'admin', or 'user'", "INVALID_ROLE")
+			return
+		}
+		role = &r
+	}
+
+	user, err := h.authService.UpdateUser(r.Context(), userID, req.Name, req.Email, role)
+	if err != nil {
+		switch err {
+		case domain.ErrUserNotFound:
+			response.NotFound(w, "User not found")
+		case domain.ErrUserExists:
+			response.Error(w, http.StatusConflict, "Email already in use", "EMAIL_EXISTS")
+		default:
+			response.HandleError(w, err)
+		}
+		return
+	}
+
+	response.Success(w, user.ToPublic())
+}
+
 // HandleForgotPassword initiates password reset flow
 func (h *AuthHandler) HandleForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -294,11 +444,12 @@ func (h *AuthHandler) HandleResetPassword(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.authService.ResetPassword(r.Context(), req.Token, req.NewPassword); err != nil {
-		if err == domain.ErrInvalidResetToken {
+		switch err {
+		case domain.ErrInvalidResetToken:
 			response.BadRequest(w, "Invalid or expired reset token", "INVALID_TOKEN")
-		} else if err == domain.ErrPasswordTooShort {
+		case domain.ErrPasswordTooShort:
 			response.BadRequest(w, "Password must be at least 8 characters", "PASSWORD_TOO_SHORT")
-		} else {
+		default:
 			response.HandleError(w, err)
 		}
 		return

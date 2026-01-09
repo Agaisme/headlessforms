@@ -49,7 +49,7 @@ func (r *SubmissionRepository) GetByFormID(ctx context.Context, formID string) (
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var submissions []*domain.Submission
 	for rows.Next() {
@@ -79,7 +79,7 @@ func (r *SubmissionRepository) Delete(ctx context.Context, id string) error {
 func (r *SubmissionRepository) GetByFormIDPaginated(ctx context.Context, formID string, limit, offset int) ([]*domain.Submission, int, error) {
 	// Get total count
 	var total int
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM submissions WHERE form_id = ?`, formID).Scan(&total)
+	_ = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM submissions WHERE form_id = ?`, formID).Scan(&total)
 
 	// Get paginated submissions
 	query := `SELECT id, form_id, COALESCE(status, 'unread'), data, meta, created_at FROM submissions WHERE form_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
@@ -88,7 +88,7 @@ func (r *SubmissionRepository) GetByFormIDPaginated(ctx context.Context, formID 
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var submissions []*domain.Submission
 	for rows.Next() {

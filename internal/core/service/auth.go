@@ -221,6 +221,71 @@ func (s *AuthService) CreateUser(ctx context.Context, email, password, name stri
 	return user, nil
 }
 
+// UpdateUser updates a user's profile information
+func (s *AuthService) UpdateUser(ctx context.Context, userID string, name, email string, role *domain.UserRole) (*domain.User, error) {
+	user, err := s.repo.User().GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, domain.ErrUserNotFound
+	}
+
+	// Check if email is changing and already exists
+	if email != "" && email != user.Email {
+		existing, _ := s.repo.User().GetByEmail(ctx, email)
+		if existing != nil && existing.ID != userID {
+			return nil, domain.ErrUserExists
+		}
+		user.Email = email
+	}
+
+	if name != "" {
+		user.Name = name
+	}
+
+	// Update role if provided (admin operation)
+	if role != nil {
+		user.Role = *role
+	}
+
+	user.UpdatedAt = time.Now()
+
+	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.User().Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+// UpdatePassword changes a user's password (requires current password verification)
+func (s *AuthService) UpdatePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	user, err := s.repo.User().GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return domain.ErrUserNotFound
+	}
+
+	// Verify current password
+	if !user.CheckPassword(currentPassword) {
+		return domain.ErrInvalidCredentials
+	}
+
+	// Validate and set new password
+	if err := user.SetPassword(newPassword); err != nil {
+		return err
+	}
+	user.UpdatedAt = time.Now()
+
+	return s.repo.User().Update(ctx, user)
+}
+
 // RequestPasswordReset creates a password reset token for the given email
 func (s *AuthService) RequestPasswordReset(ctx context.Context, email string) (*domain.PasswordResetToken, error) {
 	user, err := s.repo.User().GetByEmail(ctx, email)

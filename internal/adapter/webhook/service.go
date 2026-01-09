@@ -105,10 +105,11 @@ func (s *Service) sendRequest(url, secret string, body []byte) error {
 	if err != nil {
 		return fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
-
-	// Read and discard body to allow connection reuse
-	io.Copy(io.Discard, resp.Body)
+	defer func() {
+		// Read and discard body to allow connection reuse
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil

@@ -113,7 +113,7 @@ docker run -d \
 3. Add hidden field to your form:
 
 ```html
-<input type="hidden" name="_key" value="YOUR_SUBMISSION_KEY" />
+<input type="hidden" name="_submission_key" value="YOUR_SUBMISSION_KEY" />
 ```
 
 ---

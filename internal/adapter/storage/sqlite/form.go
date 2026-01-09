@@ -27,7 +27,7 @@ func (r *FormRepository) Create(ctx context.Context, f *domain.Form) error {
 
 	// Try to set new columns - ignore errors if they don't exist
 	if err == nil {
-		r.db.ExecContext(ctx, `UPDATE forms SET status = ?, submission_count = ?, updated_at = ?, webhook_url = ?, webhook_secret = ?, access_mode = ?, submission_key = ?, owner_id = ? WHERE id = ?`,
+		_, _ = r.db.ExecContext(ctx, `UPDATE forms SET status = ?, submission_count = ?, updated_at = ?, webhook_url = ?, webhook_secret = ?, access_mode = ?, submission_key = ?, owner_id = ? WHERE id = ?`,
 			f.Status, f.SubmissionCount, f.UpdatedAt, f.WebhookURL, f.WebhookSecret, f.AccessMode, f.SubmissionKey, f.OwnerID, f.ID)
 	}
 
@@ -46,7 +46,7 @@ func (r *FormRepository) Update(ctx context.Context, f *domain.Form) error {
 
 	// Try to set new columns - ignore errors if they don't exist
 	if err == nil {
-		r.db.ExecContext(ctx, `UPDATE forms SET status = ?, updated_at = ?, webhook_url = ?, webhook_secret = ?, access_mode = ?, submission_key = ? WHERE id = ?`,
+		_, _ = r.db.ExecContext(ctx, `UPDATE forms SET status = ?, updated_at = ?, webhook_url = ?, webhook_secret = ?, access_mode = ?, submission_key = ? WHERE id = ?`,
 			f.Status, f.UpdatedAt, f.WebhookURL, f.WebhookSecret, f.AccessMode, f.SubmissionKey, f.ID)
 	}
 
@@ -62,8 +62,8 @@ func (r *FormRepository) GetByID(ctx context.Context, id string) (*domain.Form, 
 }
 
 func (r *FormRepository) getByField(ctx context.Context, field, value string) (*domain.Form, error) {
-	// First try with all columns
-	query := fmt.Sprintf(`SELECT id, public_id, name, notify_emails, allowed_origins, redirect_url, created_at FROM forms WHERE %s = ?`, field)
+	// G201: field is internal constant ("id" or "public_id"), not user input
+	query := fmt.Sprintf(`SELECT id, public_id, name, notify_emails, allowed_origins, redirect_url, created_at FROM forms WHERE %s = ?`, field) // #nosec G201
 
 	row := r.db.QueryRowContext(ctx, query, value)
 
@@ -89,7 +89,8 @@ func (r *FormRepository) getByField(ctx context.Context, field, value string) (*
 	var status sql.NullString
 	var count int
 	var webhookURL, webhookSecret, accessMode, submissionKey, ownerID sql.NullString
-	extQuery := fmt.Sprintf(`SELECT status, submission_count, webhook_url, webhook_secret, access_mode, submission_key, owner_id FROM forms WHERE %s = ?`, field)
+	// G201: field is internal constant, not user input
+	extQuery := fmt.Sprintf(`SELECT status, submission_count, webhook_url, webhook_secret, access_mode, submission_key, owner_id FROM forms WHERE %s = ?`, field) // #nosec G201
 	if err := r.db.QueryRowContext(ctx, extQuery, value).Scan(&status, &count, &webhookURL, &webhookSecret, &accessMode, &submissionKey, &ownerID); err == nil {
 		if status.Valid && status.String != "" {
 			f.Status = domain.FormStatus(status.String)
@@ -117,7 +118,7 @@ func (r *FormRepository) List(ctx context.Context) ([]*domain.Form, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var forms []*domain.Form
 	for rows.Next() {
@@ -160,7 +161,7 @@ func (r *FormRepository) Delete(ctx context.Context, id string) error {
 func (r *FormRepository) ListPaginated(ctx context.Context, limit, offset int) ([]*domain.Form, int, error) {
 	// Get total count
 	var total int
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM forms`).Scan(&total)
+	_ = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM forms`).Scan(&total)
 
 	// Get paginated forms
 	query := `SELECT id, public_id, name, notify_emails, allowed_origins, redirect_url, created_at FROM forms ORDER BY created_at DESC LIMIT ? OFFSET ?`
@@ -169,7 +170,7 @@ func (r *FormRepository) ListPaginated(ctx context.Context, limit, offset int) (
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var forms []*domain.Form
 	for rows.Next() {
@@ -211,7 +212,7 @@ func (r *FormRepository) IncrementSubmissionCount(ctx context.Context, formID st
 func (r *FormRepository) ListByOwnerPaginated(ctx context.Context, ownerID string, limit, offset int) ([]*domain.Form, int, error) {
 	// Get total count for this owner
 	var total int
-	r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM forms WHERE owner_id = ?`, ownerID).Scan(&total)
+	_ = r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM forms WHERE owner_id = ?`, ownerID).Scan(&total)
 
 	// Get paginated forms for this owner
 	query := `SELECT id, public_id, name, notify_emails, allowed_origins, redirect_url, created_at FROM forms WHERE owner_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`
@@ -220,7 +221,7 @@ func (r *FormRepository) ListByOwnerPaginated(ctx context.Context, ownerID strin
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var forms []*domain.Form
 	for rows.Next() {

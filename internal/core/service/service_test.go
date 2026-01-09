@@ -42,9 +42,7 @@ func (m *MockRepository) User() ports.UserRepository {
 }
 
 // MockUserRepository for testing
-type MockUserRepository struct {
-	users map[string]*domain.User
-}
+type MockUserRepository struct{}
 
 func (r *MockUserRepository) Create(ctx context.Context, user *domain.User) error {
 	return nil
@@ -280,7 +278,7 @@ func TestFormService_CreateForm(t *testing.T) {
 	repo := NewMockRepository()
 	svc := NewFormService(repo)
 
-	form, err := svc.CreateForm(context.Background(), "Contact Form", "", nil, "", "", "")
+	form, err := svc.CreateForm(context.Background(), "Contact Form", "", nil, "", "", "", "public", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -296,7 +294,7 @@ func TestFormService_CreateForm_ValidationError(t *testing.T) {
 	repo := NewMockRepository()
 	svc := NewFormService(repo)
 
-	_, err := svc.CreateForm(context.Background(), "", "", nil, "", "", "")
+	_, err := svc.CreateForm(context.Background(), "", "", nil, "", "", "", "public", "")
 	if err != domain.ErrFormNameRequired {
 		t.Errorf("expected ErrFormNameRequired, got %v", err)
 	}
@@ -306,8 +304,8 @@ func TestFormService_ListForms(t *testing.T) {
 	repo := NewMockRepository()
 	svc := NewFormService(repo)
 
-	_, _ = svc.CreateForm(context.Background(), "Form 1", "", nil, "", "", "")
-	_, _ = svc.CreateForm(context.Background(), "Form 2", "", nil, "", "", "")
+	_, _ = svc.CreateForm(context.Background(), "Form 1", "", nil, "", "", "", "public", "")
+	_, _ = svc.CreateForm(context.Background(), "Form 2", "", nil, "", "", "", "public", "")
 
 	forms, err := svc.ListForms(context.Background())
 	if err != nil {
@@ -323,7 +321,7 @@ func TestSubmissionService_Submit(t *testing.T) {
 	formSvc := NewFormService(repo)
 	submSvc := NewSubmissionService(repo)
 
-	form, _ := formSvc.CreateForm(context.Background(), "Test Form", "", nil, "", "", "")
+	form, _ := formSvc.CreateForm(context.Background(), "Test Form", "", nil, "", "", "", "public", "")
 
 	sub, err := submSvc.Submit(context.Background(), form.PublicID, map[string]interface{}{"email": "test@example.com"}, nil)
 	if err != nil {
@@ -352,7 +350,7 @@ func TestSubmissionService_ListSubmissions(t *testing.T) {
 	formSvc := NewFormService(repo)
 	submSvc := NewSubmissionService(repo)
 
-	form, _ := formSvc.CreateForm(context.Background(), "Test Form", "", nil, "", "", "")
+	form, _ := formSvc.CreateForm(context.Background(), "Test Form", "", nil, "", "", "", "public", "")
 	_, _ = submSvc.Submit(context.Background(), form.PublicID, map[string]interface{}{"email": "a@b.com"}, nil)
 	_, _ = submSvc.Submit(context.Background(), form.PublicID, map[string]interface{}{"email": "c@d.com"}, nil)
 

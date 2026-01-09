@@ -1,140 +1,77 @@
-# HeadlessForms Deployment Guide
+# Deployment Guide
 
-## Quick Start with Podman
+## 1. Single Binary Deployment (Recommended)
 
-### 1. Build the Image
+The easiest way to deploy is as a single executable that contains both the backend and frontend.
 
-```powershell
-cd headless_form
-podman build -t headless-form:enterprise .
+### Prerequisites
+
+- Go 1.22+
+- Node.js 20+
+
+### Build Steps
+
+1. **Build Frontend**:
+
+   ```bash
+   cd web
+   npm install
+   npm run build
+   cd ..
+   ```
+
+   This generates static assets in `web/build`.
+
+2. **Build Backend**:
+
+   ```bash
+   # Linux
+   GOOS=linux GOARCH=amd64 go build -o headless-form ./cmd/server
+
+   # Windows
+   go build -o headless-form.exe ./cmd/server
+   ```
+
+3. **Deploy**:
+   Upload the binary and your `.env` file to your server.
+
+### Running
+
+```bash
+./headless-form
 ```
 
-### 2. Run Container
-
-```powershell
-podman run -d --name hfm -p 8080:8080 -v headless-form-data:/data headless-form:enterprise
-```
-
-### 3. Access Application
-
-Open http://localhost:8080 and create your first admin account.
+Access at `http://your-server:8080`.
 
 ---
 
-## Environment Variables
+## 2. Docker Deployment
 
-| Variable         | Default          | Description               |
-| ---------------- | ---------------- | ------------------------- |
-| `PORT`           | 8080             | Server port               |
-| `DATA_DIR`       | /data            | SQLite database directory |
-| `JWT_SECRET`     | (auto-generated) | JWT signing key           |
-| `TOKEN_DURATION` | 168h             | JWT expiry (7 days)       |
-| `SMTP_HOST`      | -                | SMTP server host          |
-| `SMTP_PORT`      | 587              | SMTP port                 |
-| `SMTP_USERNAME`  | -                | SMTP username             |
-| `SMTP_PASSWORD`  | -                | SMTP password             |
-| `SMTP_FROM`      | -                | Sender email              |
-| `SMTP_ENABLED`   | false            | Enable email sending      |
+### Build Image
 
----
-
-## Docker/Podman Commands
-
-### View Logs
-
-```powershell
-podman logs -f hfm
+```bash
+docker build -t headless-form .
 ```
 
-### Stop Container
+### Run Container
 
-```powershell
-podman stop hfm
-```
-
-### Start Container
-
-```powershell
-podman start hfm
-```
-
-### Remove Container
-
-```powershell
-podman rm -f hfm
-```
-
-### Rebuild and Restart
-
-```powershell
-podman rm -f hfm
-podman build -t headless-form:enterprise .
-podman run -d --name hfm -p 8080:8080 -v headless-form-data:/data headless-form:enterprise
+```bash
+docker run -d \
+  -p 8080:8080 \
+  --env-file .env \
+  --name headless-form \
+  headless-form
 ```
 
 ---
 
-## Production Recommendations
+## 3. Configuration (.env)
 
-### 1. Configure JWT Secret
+| Variable       | Description         | Example                                  |
+| -------------- | ------------------- | ---------------------------------------- |
+| `PORT`         | Server port         | `8080`                                   |
+| `ENV`          | Environment         | `production`                             |
+| `DATABASE_URL` | Postgres Connection | `postgres://user:pass@localhost:5432/db` |
+| `JWT_SECRET`   | Secret Key          | `change-me-in-prod`                      |
 
-Set a strong, random `JWT_SECRET` environment variable:
-
-```powershell
-podman run -d --name hfm -p 8080:8080 \
-  -e JWT_SECRET="your-secure-random-secret-here" \
-  -v headless-form-data:/data \
-  headless-form:enterprise
-```
-
-### 2. Enable SMTP for Password Reset
-
-```powershell
-podman run -d --name hfm -p 8080:8080 \
-  -e SMTP_HOST="smtp.example.com" \
-  -e SMTP_PORT="587" \
-  -e SMTP_USERNAME="user@example.com" \
-  -e SMTP_PASSWORD="password" \
-  -e SMTP_FROM="noreply@example.com" \
-  -e SMTP_ENABLED="true" \
-  -v headless-form-data:/data \
-  headless-form:enterprise
-```
-
-### 3. Reverse Proxy (Nginx)
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name forms.example.com;
-
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-### 4. Backup Data
-
-```powershell
-# Copy data volume
-podman cp hfm:/data/headless_form.db ./backup/
-```
-
----
-
-## Troubleshooting
-
-### Container fails to start
-
-Check logs: `podman logs hfm`
-
-### Database locked error
-
-Check write permissions on volume
-
-### JWT token invalid
-
-Verify `JWT_SECRET` is consistent between restarts
+See `.env.example` for full list.

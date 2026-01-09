@@ -65,9 +65,9 @@
 				</div>
 			{:else}
 				<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
-					<div>
-						<label class="text-sm font-medium mb-1.5 block">Email Address</label>
-						<Input type="email" bind:value={email} placeholder="you@example.com" required />
+				<div>
+						<label for="email" class="text-sm font-medium mb-1.5 block">Email Address</label>
+						<Input id="email" type="email" bind:value={email} placeholder="you@example.com" required />
 					</div>
 					<Button type="submit" class="w-full" disabled={loading}>
 						{loading ? 'Sending...' : 'Send Reset Link'}

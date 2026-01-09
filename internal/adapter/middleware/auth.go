@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -166,5 +167,7 @@ func CanAccessForm(ctx context.Context, formOwnerID string) bool {
 func writeJSONError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	w.Write([]byte(message))
+	if _, err := w.Write([]byte(message)); err != nil {
+		log.Printf("[ERROR] Failed to write error response: %v", err)
+	}
 }

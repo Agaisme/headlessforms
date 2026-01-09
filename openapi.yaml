@@ -1,0 +1,1023 @@
+openapi: 3.0.3
+info:
+  title: HeadlessForms API
+  description: |
+    A headless form backend for static sites. 
+
+    ## Authentication
+    Most endpoints require JWT Bearer authentication. Login to get a token.
+
+    ## Rate Limiting
+    - Public endpoints: 100 req/min
+    - Auth endpoints: 10 req/min  
+    - API endpoints: 200 req/min
+  version: 1.0.0
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://your-domain.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Auth
+    description: Authentication endpoints
+  - name: Users
+    description: User management (admin only)
+  - name: Forms
+    description: Form management
+  - name: Submissions
+    description: Form submissions
+  - name: Stats
+    description: Statistics and analytics
+  - name: Settings
+    description: Site settings (admin only)
+  - name: Admin
+    description: Administrative endpoints
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Health
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # Auth
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user (first user becomes super_admin)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: User already exists
+
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/change-password:
+    put:
+      tags: [Auth]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          description: Password changed successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # Users (Admin only)
+  /api/v1/users:
+    get:
+      tags: [Users]
+      summary: List all users
+      description: Requires admin or super_admin role
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      tags: [Users]
+      summary: Create new user
+      description: Requires admin or super_admin role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+
+  /api/v1/users/{user_id}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    put:
+      tags: [Users]
+      summary: Update user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: User updated
+    delete:
+      tags: [Users]
+      summary: Delete user
+      responses:
+        "200":
+          description: User deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # Forms
+  /api/v1/forms:
+    get:
+      tags: [Forms]
+      summary: List forms
+      description: Admins see all forms, users see only their own
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated list of forms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormsListResponse"
+
+    post:
+      tags: [Forms]
+      summary: Create a new form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFormRequest"
+      responses:
+        "201":
+          description: Form created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormResponse"
+
+  /api/v1/forms/{form_id}:
+    parameters:
+      - $ref: "#/components/parameters/FormId"
+    get:
+      tags: [Forms]
+      summary: Get form details
+      responses:
+        "200":
+          description: Form details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Forms]
+      summary: Update form
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFormRequest"
+      responses:
+        "200":
+          description: Form updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormResponse"
+
+    delete:
+      tags: [Forms]
+      summary: Delete form
+      responses:
+        "200":
+          description: Form deleted
+
+  /api/v1/forms/{form_id}/stats:
+    parameters:
+      - $ref: "#/components/parameters/FormId"
+    get:
+      tags: [Stats]
+      summary: Get form statistics
+      responses:
+        "200":
+          description: Form statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormStatsResponse"
+
+  /api/v1/forms/{form_id}/submissions:
+    parameters:
+      - $ref: "#/components/parameters/FormId"
+    get:
+      tags: [Submissions]
+      summary: List form submissions
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated list of submissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionsListResponse"
+
+  /api/v1/forms/{form_id}/export/csv:
+    parameters:
+      - $ref: "#/components/parameters/FormId"
+    get:
+      tags: [Forms]
+      summary: Export submissions as CSV
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  # Submissions (Public endpoint)
+  /api/v1/submissions/{form_id}:
+    parameters:
+      - $ref: "#/components/parameters/FormId"
+    post:
+      tags: [Submissions]
+      summary: Submit a form (Public endpoint)
+      description: |
+        Public endpoint for form submissions. Access control depends on form settings:
+        - `public`: Anyone can submit
+        - `with_key`: Requires submission_key in body
+        - `private`: Requires authentication
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionRequest"
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "201":
+          description: Submission created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+        "302":
+          description: Redirect to configured URL (HTML form submissions)
+        "403":
+          description: Invalid submission key or access denied
+
+  /api/v1/submissions/{sub_id}:
+    parameters:
+      - $ref: "#/components/parameters/SubId"
+    get:
+      tags: [Submissions]
+      summary: Get submission details
+      responses:
+        "200":
+          description: Submission details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionResponse"
+    delete:
+      tags: [Submissions]
+      summary: Delete submission
+      responses:
+        "200":
+          description: Submission deleted
+
+  /api/v1/submissions/{sub_id}/read:
+    parameters:
+      - $ref: "#/components/parameters/SubId"
+    put:
+      tags: [Submissions]
+      summary: Mark submission as read
+      responses:
+        "200":
+          description: Marked as read
+
+  /api/v1/submissions/{sub_id}/unread:
+    parameters:
+      - $ref: "#/components/parameters/SubId"
+    put:
+      tags: [Submissions]
+      summary: Mark submission as unread
+      responses:
+        "200":
+          description: Marked as unread
+
+  # Stats
+  /api/v1/stats:
+    get:
+      tags: [Stats]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStatsResponse"
+
+  # Settings (Admin only)
+  /api/v1/settings:
+    get:
+      tags: [Settings]
+      summary: Get site settings
+      responses:
+        "200":
+          description: Site settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+
+    put:
+      tags: [Settings]
+      summary: Update site settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsRequest"
+      responses:
+        "200":
+          description: Settings updated
+
+  /api/v1/settings/test-smtp:
+    post:
+      tags: [Settings]
+      summary: Test SMTP configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestSmtpRequest"
+      responses:
+        "200":
+          description: Test email sent successfully
+        "400":
+          description: SMTP configuration error
+
+  # Admin
+  /api/v1/admin/seed:
+    post:
+      tags: [Admin]
+      summary: Seed test data
+      description: Creates test forms and submissions for testing
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeedRequest"
+      responses:
+        "200":
+          description: Seeding complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeedResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from /api/v1/auth/login
+
+  parameters:
+    FormId:
+      name: form_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Form public ID
+
+    SubId:
+      name: sub_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Submission ID
+
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: User ID
+
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+      description: Page number
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+      description: Items per page
+
+  responses:
+    BadRequest:
+      description: Bad request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # Common
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+        code:
+          type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+
+    # Health
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              example: healthy
+            version:
+              type: string
+              example: "1.0.0"
+
+    # Auth
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        password:
+          type: string
+          minLength: 8
+          example: SecurePass123!
+        name:
+          type: string
+          example: John Doe
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+              description: JWT token
+            user:
+              $ref: "#/components/schemas/User"
+
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 8
+
+    # Users
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [viewer, user, admin, super_admin]
+        created_at:
+          type: string
+          format: date-time
+
+    UserResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          $ref: "#/components/schemas/User"
+
+    UsersListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: "#/components/schemas/User"
+
+    CreateUserRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+        role:
+          type: string
+          enum: [viewer, user, admin]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [viewer, user, admin]
+
+    # Forms
+    Form:
+      type: object
+      properties:
+        id:
+          type: string
+        public_id:
+          type: string
+        owner_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        notify_emails:
+          type: array
+          items:
+            type: string
+        redirect_url:
+          type: string
+        webhook_url:
+          type: string
+        access_mode:
+          type: string
+          enum: [public, with_key, private]
+        submission_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FormResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          $ref: "#/components/schemas/Form"
+
+    FormsListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            forms:
+              type: array
+              items:
+                $ref: "#/components/schemas/Form"
+            pagination:
+              $ref: "#/components/schemas/Pagination"
+
+    CreateFormRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: Contact Form
+        redirect_url:
+          type: string
+          example: https://example.com/thank-you
+        notify_emails:
+          type: array
+          items:
+            type: string
+          example: [admin@example.com]
+        webhook_url:
+          type: string
+        webhook_secret:
+          type: string
+        access_mode:
+          type: string
+          enum: [public, with_key, private]
+          default: public
+        submission_key:
+          type: string
+          description: Required when access_mode is with_key
+
+    UpdateFormRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateFormRequest"
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [active, inactive]
+
+    # Submissions
+    Submission:
+      type: object
+      properties:
+        id:
+          type: string
+        form_id:
+          type: string
+        status:
+          type: string
+          enum: [unread, read]
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          properties:
+            _server:
+              type: object
+              properties:
+                ip:
+                  type: string
+                country:
+                  type: string
+                user_agent:
+                  type: string
+            _spam:
+              type: object
+              properties:
+                score:
+                  type: number
+                is_spam:
+                  type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    SubmissionResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          $ref: "#/components/schemas/Submission"
+
+    SubmissionsListResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            submissions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Submission"
+            pagination:
+              $ref: "#/components/schemas/Pagination"
+
+    SubmissionRequest:
+      type: object
+      additionalProperties: true
+      description: Form data fields
+      example:
+        name: John Doe
+        email: john@example.com
+        message: Hello, this is a test submission
+
+    # Stats
+    DashboardStatsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            total_forms:
+              type: integer
+            active_forms:
+              type: integer
+            total_submissions:
+              type: integer
+            unread_submissions:
+              type: integer
+            submissions_today:
+              type: integer
+            submissions_this_week:
+              type: integer
+            daily_submissions:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                  count:
+                    type: integer
+
+    FormStatsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            form_id:
+              type: string
+            total_submissions:
+              type: integer
+            unread_submissions:
+              type: integer
+            submissions_today:
+              type: integer
+            submissions_this_week:
+              type: integer
+
+    # Settings
+    SettingsResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            site_name:
+              type: string
+            site_url:
+              type: string
+            smtp_host:
+              type: string
+            smtp_port:
+              type: integer
+            smtp_user:
+              type: string
+            smtp_from:
+              type: string
+            smtp_from_name:
+              type: string
+            smtp_secure:
+              type: boolean
+
+    SettingsRequest:
+      type: object
+      properties:
+        site_name:
+          type: string
+        site_url:
+          type: string
+        smtp_host:
+          type: string
+        smtp_port:
+          type: integer
+        smtp_user:
+          type: string
+        smtp_password:
+          type: string
+        smtp_from:
+          type: string
+        smtp_from_name:
+          type: string
+        smtp_secure:
+          type: boolean
+
+    TestSmtpRequest:
+      type: object
+      required: [to_email]
+      properties:
+        to_email:
+          type: string
+          format: email
+        smtp_host:
+          type: string
+        smtp_port:
+          type: integer
+        smtp_user:
+          type: string
+        smtp_password:
+          type: string
+        smtp_from:
+          type: string
+        smtp_from_name:
+          type: string
+        smtp_secure:
+          type: boolean
+
+    # Admin
+    SeedRequest:
+      type: object
+      properties:
+        forms:
+          type: integer
+          default: 1000
+          maximum: 10000
+        submissions_per_form:
+          type: integer
+          default: 100
+          maximum: 1000
+
+    SeedResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+            forms_created:
+              type: integer
+            submissions_created:
+              type: integer

@@ -109,8 +109,8 @@ func (s *Store) migrate() error {
 		_, _ = s.db.Exec(idx)
 	}
 
-	// Password reset tokens table
-	passwordResetSchema := `
+	// Reset tokens table
+	resetTokensSchema := ` //nolint:gosec // G101 false positive - this is a table schema, not credentials
 	CREATE TABLE IF NOT EXISTS password_resets (
 		id TEXT PRIMARY KEY,
 		user_id TEXT NOT NULL,
@@ -123,7 +123,7 @@ func (s *Store) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
 	CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);
 	`
-	_, _ = s.db.Exec(passwordResetSchema)
+	_, _ = s.db.Exec(resetTokensSchema)
 
 	// Site settings table
 	siteSettingsSchema := `

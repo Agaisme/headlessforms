@@ -2,6 +2,8 @@ package domain
 
 import (
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -26,6 +28,9 @@ var (
 	ErrPasswordTooShort   = errors.New("password must be at least 8 characters")
 	ErrInvalidResetToken  = errors.New("invalid or expired reset token")
 )
+
+// emailRegex is a basic email validation pattern
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
 // PasswordResetToken represents a password reset request
 type PasswordResetToken struct {
@@ -71,6 +76,11 @@ func (u *User) CheckPassword(password string) bool {
 func (u *User) Validate() error {
 	if u.Email == "" {
 		return ErrEmailRequired
+	}
+	// Normalize and validate email format
+	u.Email = strings.TrimSpace(strings.ToLower(u.Email))
+	if !emailRegex.MatchString(u.Email) {
+		return ErrInvalidEmail
 	}
 	return nil
 }

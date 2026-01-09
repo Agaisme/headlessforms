@@ -94,6 +94,12 @@
 						<span>Settings</span>
 					</a>
 				{/if}
+				<a href="/profile" class="sidebar-link" class:active={$page.url.pathname === '/profile'}>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+					</svg>
+					<span>Profile</span>
+				</a>
 			</nav>
 
 			<!-- User & Footer -->
@@ -137,6 +143,8 @@
 							Users
 						{:else if $page.url.pathname === '/settings'}
 							Settings
+						{:else if $page.url.pathname === '/profile'}
+							Profile
 						{:else}
 							HeadlessForms
 						{/if}

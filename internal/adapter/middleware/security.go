@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
 )
@@ -106,8 +107,10 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Log the request (could be enhanced with structured logging)
-		// log.Printf("%s %s", r.Method, r.URL.Path)
+		// Log API requests for debugging
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			log.Printf("[API] %s %s", r.Method, r.URL.Path)
+		}
 
 		next.ServeHTTP(w, r)
 	})

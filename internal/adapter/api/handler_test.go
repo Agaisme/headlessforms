@@ -217,7 +217,7 @@ func TestHandleCreateForm(t *testing.T) {
 	}
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["status"] != "success" {
 		t.Errorf("expected status 'success', got '%v'", resp["status"])
 	}
@@ -231,7 +231,7 @@ func TestHandleListForms(t *testing.T) {
 	router := NewRouter(formSvc, submSvc, statsSvc)
 
 	// Create a form first
-	formSvc.CreateForm(context.Background(), "Test Form", "", nil, "", "", "")
+	_, _ = formSvc.CreateForm(context.Background(), "Test Form", "", nil, "", "", "", "public", "")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/forms", nil)
 	w := httptest.NewRecorder()
@@ -279,7 +279,7 @@ func TestHandleHealthCheck(t *testing.T) {
 	}
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	data := resp["data"].(map[string]interface{})
 	if data["status"] != "healthy" {
 		t.Errorf("expected health status 'healthy'")

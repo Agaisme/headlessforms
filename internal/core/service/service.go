@@ -86,6 +86,18 @@ func (s *FormService) ListFormsByOwnerPaginated(ctx context.Context, ownerID str
 	return s.repo.Form().ListByOwnerPaginated(ctx, ownerID, limit, offset)
 }
 
+// GetFormByID retrieves a form by its internal ID (not public_id)
+func (s *FormService) GetFormByID(ctx context.Context, id string) (*domain.Form, error) {
+	form, err := s.repo.Form().GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get form by id: %w", err)
+	}
+	if form == nil {
+		return nil, domain.ErrFormNotFound
+	}
+	return form, nil
+}
+
 func (s *FormService) UpdateForm(ctx context.Context, publicID string, name, redirectURL string, notifyEmails []string, status domain.FormStatus, webhookURL, webhookSecret, accessMode, submissionKey string) (*domain.Form, error) {
 	form, err := s.repo.Form().GetByPublicID(ctx, publicID)
 	if err != nil {
@@ -244,6 +256,18 @@ func (s *SubmissionService) MarkAsUnread(ctx context.Context, submissionID strin
 
 func (s *SubmissionService) DeleteSubmission(ctx context.Context, submissionID string) error {
 	return s.repo.Submission().Delete(ctx, submissionID)
+}
+
+// GetSubmission retrieves a single submission by ID
+func (s *SubmissionService) GetSubmission(ctx context.Context, submissionID string) (*domain.Submission, error) {
+	submission, err := s.repo.Submission().GetByID(ctx, submissionID)
+	if err != nil {
+		return nil, fmt.Errorf("get submission: %w", err)
+	}
+	if submission == nil {
+		return nil, domain.ErrSubmissionNotFound
+	}
+	return submission, nil
 }
 
 // StatsService handles statistics business logic

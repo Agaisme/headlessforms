@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"log"
 	"net/smtp"
 	"strings"
 	"time"
@@ -109,17 +110,29 @@ func (s *Service) sendEmail(to []string, subject, htmlBody, textBody string) err
 }
 
 func (s *Service) sendWithTLS(addr string, auth smtp.Auth, to []string, msg []byte) error {
-	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.config.Host})
+	// #nosec G402 - TLS 1.2 is minimum for email servers
+	conn, err := tls.Dial("tcp", addr, &tls.Config{
+		ServerName: s.config.Host,
+		MinVersion: tls.VersionTLS12,
+	})
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() {
+		if cerr := conn.Close(); cerr != nil {
+			log.Printf("[WARN] Failed to close TLS connection: %v", cerr)
+		}
+	}()
 
 	client, err := smtp.NewClient(conn, s.config.Host)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() {
+		if cerr := client.Close(); cerr != nil {
+			log.Printf("[WARN] Failed to close SMTP client: %v", cerr)
+		}
+	}()
 
 	if err := client.Auth(auth); err != nil {
 		return err

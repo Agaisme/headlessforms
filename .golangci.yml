@@ -1,0 +1,30 @@
+# golangci-lint v2 configuration
+version: "2"
+
+linters:
+  enable:
+    - errcheck # Check for unchecked errors
+    - govet # Examine Go source code
+    - ineffassign # Detect ineffectual assignments
+    - staticcheck # Static analysis
+    - unused # Check for unused code
+    - bodyclose # Check HTTP body is closed
+    - gosec # Security checks
+    - misspell # Find misspelled words
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+
+issues:
+  exclude-rules:
+    # Ignore tests
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+    # Ignore G101 false positive on password_resets table schema
+    - path: store\.go
+      text: "G101"
+      linters:
+        - gosec

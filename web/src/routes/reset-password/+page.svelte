@@ -93,12 +93,12 @@
 			{:else}
 				<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
 					<div>
-						<label class="text-sm font-medium mb-1.5 block">New Password</label>
-						<Input type="password" bind:value={password} placeholder="Min 8 characters" required />
+						<label for="password" class="text-sm font-medium mb-1.5 block">New Password</label>
+						<Input id="password" type="password" bind:value={password} placeholder="Min 8 characters" required />
 					</div>
 					<div>
-						<label class="text-sm font-medium mb-1.5 block">Confirm Password</label>
-						<Input type="password" bind:value={confirmPassword} placeholder="Repeat password" required />
+						<label for="confirmPassword" class="text-sm font-medium mb-1.5 block">Confirm Password</label>
+						<Input id="confirmPassword" type="password" bind:value={confirmPassword} placeholder="Repeat password" required />
 					</div>
 					<Button type="submit" class="w-full" disabled={loading}>
 						{loading ? 'Resetting...' : 'Reset Password'}
