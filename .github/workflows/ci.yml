@@ -1,5 +1,5 @@
 # HeadlessForms CI/CD Pipeline
-# Runs tests, builds, and creates Docker images on push/PR
+# Runs tests, builds, and creates releases
 
 name: CI/CD
 
@@ -14,8 +14,6 @@ on:
 env:
   GO_VERSION: "1.22"
   NODE_VERSION: "20"
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ============================================
@@ -43,18 +41,11 @@ jobs:
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.1.6 # Latest stable v2
+          version: v2.1.6
           args: --timeout=5m
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.out
-          flags: backend
-          fail_ci_if_error: false
 
       - name: Build binary
         run: |
@@ -92,67 +83,9 @@ jobs:
 
       - name: Type check
         run: npm run check
-        continue-on-error: true # Allow a11y warnings
 
       - name: Build
         run: npm run build
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: web/build
-          retention-days: 7
-
-  # ============================================
-  # Docker Build & Push
-  # ============================================
-  docker:
-    name: Docker Image
-    needs: [backend, frontend]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   # ============================================
   # Release (on tags)
@@ -175,7 +108,7 @@ jobs:
           path: ./dist
 
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
