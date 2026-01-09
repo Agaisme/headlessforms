@@ -41,9 +41,9 @@ jobs:
         run: go mod verify
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: v1.62.2 # Pinned for stability - update carefully
+          version: v2.1.6 # Latest stable v2
           args: --timeout=5m
 
       - name: Run tests

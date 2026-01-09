@@ -1,3 +1,7 @@
+# golangci-lint v2 configuration
+# https://golangci-lint.run/usage/configuration/
+version: "2"
+
 run:
   timeout: 5m
 
@@ -15,18 +19,16 @@ linters:
 linters-settings:
   errcheck:
     check-type-assertions: true
-  gosec:
-    excludes:
-      - G101
 
 issues:
   exclude-rules:
+    # Ignore specific linters in test files
     - path: _test\.go
       linters:
         - gosec
         - errcheck
         - bodyclose
-    - path: store\.go
-      text: "G101"
-      linters:
+    # Ignore G101 false positive - "password_resets" is a table name, not credentials
+    - linters:
         - gosec
+      text: "G101"

@@ -110,7 +110,8 @@ func (s *Store) migrate() error {
 	}
 
 	// Reset tokens table
-	resetTokensSchema := ` //nolint:gosec // G101 false positive - this is a table schema, not credentials
+	//nolint:gosec // G101 false positive - this is a table schema, not credentials
+	resetTokensSchema := `
 	CREATE TABLE IF NOT EXISTS password_resets (
 		id TEXT PRIMARY KEY,
 		user_id TEXT NOT NULL,
